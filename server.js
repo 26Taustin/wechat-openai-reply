@@ -1,14 +1,13 @@
-app.get('/wechat', (req, res) => {
-  const { echostr } = req.query
-  res.send(echostr)
-})
-
-
 import express from "express";
 import crypto from "crypto";
 import OpenAI from "openai";
 
 const app = express();
+app.get('/wechat', (req, res) => {
+  const { echostr } = req.query
+  res.send(echostr)
+})
+
 
 // 微信会发 XML
 app.use(express.text({ type: ["text/xml", "application/xml", "*/xml", "text/plain"] }));
