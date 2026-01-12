@@ -1,3 +1,9 @@
+app.get('/wechat', (req, res) => {
+  const { echostr } = req.query
+  res.send(echostr)
+})
+
+
 import express from "express";
 import crypto from "crypto";
 import OpenAI from "openai";
