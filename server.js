@@ -3,7 +3,6 @@ import crypto from "crypto";
 import OpenAI from "openai";
 
 const app = express();
-})
 
 
 // 微信会发 XML
@@ -112,7 +111,7 @@ app.post("/wechat", async (req, res) => {
 
   try {
     const r = await openai.responses.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4.1-2025-04-14",
       input: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userText }
