@@ -107,39 +107,36 @@ app.post("/wechat", async (req, res) => {
     return;
   }
 
-  const userText = getXmlValue(xml, "Content").trim();
-
+    const userText = getXmlValue(xml, "Content").trim();
   try {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o",                  // 如果你账号没 gpt-4o 权限，改成 "gpt-4o-mini" 或 "gpt-3.5-turbo"
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userText }
-    ],
-    max_tokens: 400,                  // 控制回复长度，120个汉字大概对应 200-300 tokens，够用
-    temperature: 0.85                 // 0.7~1.0 之间，偏口语化一点，别太死板
-  });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",  // 强制改成这个，最稳，所有账号基本都有权限
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText }
+      ],
+      max_tokens: 400,
+      temperature: 0.85
+    });
 
-  let text = completion.choices[0]?.message?.content?.trim() || "";
-  
-  // 防止空回复或 OpenAI 返回垃圾
-  if (!text) {
-    text = "没太 get 到你的意思，再说清楚点？";
+    let text = completion.choices?.[0]?.message?.content?.trim() || "";
+
+    if (!text) {
+      text = "没太懂，再说一遍？";
+    }
+
+    const reply = buildTextReply({ toUser, fromUser, content: text });
+    res.type("application/xml").send(reply);
+  } catch (e) {
+    console.error("OpenAI 调用失败:", e.message);  // 日志关键，保留
+
+    const reply = buildTextReply({
+      toUser,
+      fromUser,
+      content: "系统卡了下，再发一次试试。"
+    });
+    res.type("application/xml").send(reply);
   }
-
-  const reply = buildTextReply({ toUser, fromUser, content: text });
-  res.type("application/xml").send(reply);
-} catch (e) {
-  console.error("OpenAI 调用失败:", e.message);  // 加这行，方便你在云托管日志里看到真实错误
-  
-  const reply = buildTextReply({
-    toUser,
-    fromUser,
-    content: "系统卡了一下，你刚才那句再发一遍试试。"
-  });
-  res.type("application/xml").send(reply);
-}
-
     
     const reply = buildTextReply({ toUser, fromUser, content: text });
     res.type("application/xml").send(reply);
