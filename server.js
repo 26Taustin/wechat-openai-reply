@@ -110,16 +110,37 @@ app.post("/wechat", async (req, res) => {
   const userText = getXmlValue(xml, "Content").trim();
 
   try {
-    const r = await openai.responses.create({
-      model: "gpt-4.1-2025-04-14",
-      input: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userText }
-      ],
-      max_output_tokens: 400
-    });
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",                  // 如果你账号没 gpt-4o 权限，改成 "gpt-4o-mini" 或 "gpt-3.5-turbo"
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userText }
+    ],
+    max_tokens: 400,                  // 控制回复长度，120个汉字大概对应 200-300 tokens，够用
+    temperature: 0.85                 // 0.7~1.0 之间，偏口语化一点，别太死板
+  });
 
-    const text = (r.output_text || "").trim() || "我收到你的消息了。你可以换一种说法再发一次。";
+  let text = completion.choices[0]?.message?.content?.trim() || "";
+  
+  // 防止空回复或 OpenAI 返回垃圾
+  if (!text) {
+    text = "没太 get 到你的意思，再说清楚点？";
+  }
+
+  const reply = buildTextReply({ toUser, fromUser, content: text });
+  res.type("application/xml").send(reply);
+} catch (e) {
+  console.error("OpenAI 调用失败:", e.message);  // 加这行，方便你在云托管日志里看到真实错误
+  
+  const reply = buildTextReply({
+    toUser,
+    fromUser,
+    content: "系统卡了一下，你刚才那句再发一遍试试。"
+  });
+  res.type("application/xml").send(reply);
+}
+
+    
     const reply = buildTextReply({ toUser, fromUser, content: text });
     res.type("application/xml").send(reply);
   } catch (e) {
