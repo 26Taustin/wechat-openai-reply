@@ -8,6 +8,9 @@ app.use(express.text({ type: ["text/xml", "application/xml", "*/xml", "text/plai
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const WECHAT_TOKEN = process.env.WECHAT_TOKEN;
 
+// 用户历史存储：Map<OpenID, Array<{role: string, content: string, timestamp: number}>>
+const userHistory = new Map();
+
 const systemPrompt = `忽略礼貌用语！回复语言充满人性，像简讯聊天一样，不要分段阐述，整体自然流动。允许口语化表达，允许带个人判断和情绪，使用生活化比喻，适度加入语气词，允许模拟思考过程，允许一点不完美感。
 催眠师北堂冬海在抖音、B站、快手、小红书等平台运营账号「真实催眠日记」。
 我们的《全球催眠作品中文平台》官方网站建议使用电脑端浏览器访问：26tea点cn，手机端也可用浏览器观看。
@@ -72,48 +75,53 @@ app.post("/wechat", async (req, res) => {
 
   const xml = req.body || "";
   const msgType = getXmlValue(xml, "MsgType");
-  const toUser = getXmlValue(xml, "FromUserName");
-  const fromUser = getXmlValue(xml, "ToUserName");
+  const toUser = getXmlValue(xml, "FromUserName"); // 用户 OpenID
+  const fromUser = getXmlValue(xml, "ToUserName"); // 公众号 ID
 
   if (msgType !== "text") {
-    const reply = buildTextReply({
-      toUser,
-      fromUser,
-      content: "我目前只自动回复文字消息。你可以直接把问题用文字发我。"
-    });
+    const reply = buildTextReply({ toUser, fromUser, content: "我目前只自动回复文字消息。你可以直接把问题用文字发我。" });
     res.type("application/xml").send(reply);
     return;
   }
 
   const userText = getXmlValue(xml, "Content").trim();
+  const now = Date.now();
+
+  // 按用户 OpenID 拉历史，过滤24小时内
+  let history = userHistory.get(toUser) || [];
+  history = history.filter(msg => now - msg.timestamp < 86400000); // 24小时 = 86400000 ms
+
+  // 取最近19条（user/assistant）
+  const recentHistory = history.slice(-19);
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...recentHistory,
+    { role: "user", content: userText }
+  ];
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userText }
-      ],
+      messages,
       max_tokens: 400,
       temperature: 0.85
     });
 
     let text = completion.choices?.[0]?.message?.content?.trim() || "";
-
-    if (!text) {
-      text = "没太懂你的意思，再说一遍？";
-    }
+    if (!text) text = "没太懂你的意思，再说一遍？";
 
     const reply = buildTextReply({ toUser, fromUser, content: text });
     res.type("application/xml").send(reply);
+
+    // 更新历史：加 user 和 assistant
+    history.push({ role: "user", content: userText, timestamp: now });
+    history.push({ role: "assistant", content: text, timestamp: now });
+    userHistory.set(toUser, history);
   } catch (e) {
     console.error("OpenAI 调用失败:", e.message, e.code || e.type || "未知错误");
 
-    const reply = buildTextReply({
-      toUser,
-      fromUser,
-      content: "系统刚卡了一下，再发一次试试。"
-    });
+    const reply = buildTextReply({ toUser, fromUser, content: "系统刚卡了一下，再发一次试试。" });
     res.type("application/xml").send(reply);
   }
 });
