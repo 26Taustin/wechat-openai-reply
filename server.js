@@ -3,13 +3,11 @@ import crypto from "crypto";
 import OpenAI from "openai";
 
 const app = express();
-// 微信会发 XML
 app.use(express.text({ type: ["text/xml", "application/xml", "*/xml", "text/plain"] }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const WECHAT_TOKEN = process.env.WECHAT_TOKEN;
 
-// 你的 system prompt（全局常量）
 const systemPrompt = `忽略礼貌用语！回复语言充满人性，像简讯聊天一样，不要分段阐述，整体自然流动。允许口语化表达，允许带个人判断和情绪，使用生活化比喻，适度加入语气词，允许模拟思考过程，允许一点不完美感。
 催眠师北堂冬海在抖音、B站、快手、小红书等平台运营账号「真实催眠日记」。
 我们的《全球催眠作品中文平台》官方网站建议使用电脑端浏览器访问：26tea点cn，手机端也可用浏览器观看。
@@ -22,12 +20,10 @@ VIP 专属 QQ 群号是 981369629（进群请备注 VIP 用户名，核实通过
 如果对学习催眠感兴趣，我们还提供一对一在线教学培训。每位学徒都会建立个人档案，获得个性化指导，并提供完整的催眠专业资料，帮助学员真正掌握和驾驭催眠技术。
 其他问题可通过微信联系：15543495430（SBK 助理）。每次回复不超过120个汉字。`;
 
-// 避免 XML CDATA 被输出中的 "]]>" 破坏
 function sanitizeForCdata(text) {
   return (text || "").replaceAll("]]>", "]]&gt;");
 }
 
-// 计算微信签名
 function checkSignature({ signature, timestamp, nonce }) {
   const arr = [WECHAT_TOKEN, timestamp, nonce].sort();
   const shasum = crypto.createHash("sha1");
@@ -36,14 +32,12 @@ function checkSignature({ signature, timestamp, nonce }) {
   return digest === signature;
 }
 
-// 解析 XML 字段
 function getXmlValue(xml, tag) {
   const reg = new RegExp(`<${tag}><!\\[CDATA\\[(.*?)\\]\\]></${tag}>|<${tag}>(.*?)</${tag}>`);
   const m = xml.match(reg);
   return (m && (m[1] || m[2])) ? (m[1] || m[2]) : "";
 }
 
-// 生成被动回复 XML
 function buildTextReply({ toUser, fromUser, content }) {
   const now = Math.floor(Date.now() / 1000);
   const safe = sanitizeForCdata(content);
@@ -57,10 +51,8 @@ function buildTextReply({ toUser, fromUser, content }) {
 </xml>`.trim();
 }
 
-// 健康检查
 app.get("/", (req, res) => res.status(200).send("ok"));
 
-// 服务器配置校验（GET）
 app.get("/wechat", (req, res) => {
   const { signature, timestamp, nonce, echostr } = req.query;
   if (!signature || !timestamp || !nonce || !echostr) {
@@ -72,7 +64,6 @@ app.get("/wechat", (req, res) => {
   return res.status(200).send(echostr);
 });
 
-// 收消息与回复（POST）
 app.post("/wechat", async (req, res) => {
   const { signature, timestamp, nonce } = req.query;
   if (!checkSignature({ signature, timestamp, nonce })) {
