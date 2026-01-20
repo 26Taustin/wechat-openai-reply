@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "openai": "^6.0.0"
+    "openai": "^4.80.0"
   }
 }
