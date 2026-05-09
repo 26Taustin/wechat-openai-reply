@@ -11,7 +11,7 @@ app.use(express.json());
 const ADMIN_SECRET = "SBKLion2026Admin";
 
 // 学习费用菜单要发的图片 media_id（先留空，第一次跑代码后再填）
-const STUDY_FEE_IMAGE_MEDIA_ID = "";
+const STUDY_FEE_IMAGE_MEDIA_ID = "VGzikU3bsWf4C9BDqhkWj5ryfj7jF1fdHRYUMmjl4VXk2XWuRJ6619TD-Hs6_bBH";
 // ===================================================
 
 // 兼容两种环境变量名
