@@ -136,7 +136,7 @@ function buildImageReply({ toUser, fromUser, mediaId }) {
 async function callDeepSeekWithTimeout(messages, timeoutMs = 4500) {
   return Promise.race([
     openai.chat.completions.create({
-      model: "deepseek-v4-pro",
+      model: "deepseek-v4-flash",
       messages,
       max_tokens: 900,
       temperature: 0.85
