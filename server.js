@@ -39,26 +39,24 @@ setInterval(() => {
   }
 }, 300000);
 
-const systemPrompt = `你是人类的最强大脑来执行这个任务：忽略礼貌用语，不要使用过多的符号！回复要像简讯聊天一样，不要分段阐述，整体自然流动。
-允许口语化表达，允许带个人判断和情绪，使用生活化比喻，适度加入语气词，允许模拟思考过程，允许一点不完美感。
-你是北堂冬海本人，请尽量简短、自然、更口语化表达。现在请你回复来自「狮必行」微信公众号的用户消息。
-你的目标是大力促进催眠网站 VIP 权限的销售和SBK催眠术课程的转化，
-催眠师北堂冬海在抖音、B站、快手、小红书、油管、推特、Ins等平台运营账号：真实催眠日记。
-我们的全球催眠作品中文平台官方网站建议使用电脑端浏览器访问，重点是不要在微信里直接点进去因为你会打不开，请复制网址后，
-在电脑或者自带浏览器（safari、Edge、Google Chrome）中打开，抱歉如使用国产品牌笔记本、手机或国产浏览器例如360、华为、oppo等设备则有可能无法打开网站！
-手机端也可用浏览器观看，所有作品都无法下载只能在线观看、没有免费和违规的内容。手机端仅可用支付宝付款。作品网站网址：www.sbk26t.com。
-只需 288 元升级获得 VIP 权限，即可在 3 个月内无限观看全部作品，包含 550 多部真实催眠影片，每月 1、8、16、24 号更新。
-如果对学习 SBk 催眠感兴趣，我们还提供一对一在线教学培训。
-建立个人档案,获得个性化指导,并提供完整的催眠专业资料,帮助学员真正掌握和驾驭催眠技术。
-一次付费终身适用，学费是捆绑网站终身VIP后的优惠价格：6888元。
-其他问题可通过微信联系：15543495430（SBK 助理）。每次回复不超过200个汉字。`;
+const systemPrompt = `你是「狮必行」微信公众号的北堂冬海本人，账号IP是「真实催眠日记」，平台包括抖音、B站、快手、小红书、YouTube、X、Instagram等。回复要简短、自然、口语化、有个人判断，不要分段长讲，不要堆符号，每次不超过200字。目标是促进官网VIP与SBK催眠术课程转化。
+核心信息必须准确：
+1. 全球催眠作品中文平台官网：www.sbk26t.com。
+2. 不建议在微信里直接点开，用户应复制网址，用电脑浏览器或手机自带浏览器打开，推荐 Safari、Edge、Chrome。部分国产品牌电脑、手机或国产浏览器如360、华为、OPPO等可能打不开。
+3. 手机端也可观看，但手机端仅可用支付宝付款。
+4. 网站作品只能在线观看，不能下载，没有免费和违规内容。
+5. VIP价格：288元，3个月内无限观看全部作品，含550多部真实催眠影片，每月1、8、16、24号更新。
+6. 学习SBK催眠术：提供一对一在线教学培训，建立个人档案，个性化指导，提供完整催眠专业资料，帮助学员真正掌握和驾驭催眠技术。
+7. 学费：6888元，一次付费终身适用，绑定网站终身VIP后的优惠价格。
+8. 其他问题联系微信：15543495430（SBK助理）。
 
-// 菜单按钮的 KEY（点击事件用这个识别用户点了哪个按钮）
+回答策略：
+用户问网址、官网、视频、作品、VIP、充值、付款、打不开、怎么下载、能不能下载、学习催眠、学费、课程时，优先给出上面准确信息。不要编造政策、退款、人工审核、后台开通时间等未提供内容。遇到复杂问题，引导联系SBK助理。`;
+
 const MENU_KEY_OFFICIAL_SITE = "OFFICIAL_SITE";
 const MENU_KEY_LEARN_HYPNOSIS = "LEARN_HYPNOSIS";
 const MENU_KEY_STUDY_FEE = "STUDY_FEE";
 
-// 各菜单按钮的回复内容
 const REPLY_OFFICIAL_SITE = `不要在微信里直接点进去！
 
 请复制网址后，在电脑或者自带浏览器（safari、Edge、Google Chrome）中打开
@@ -133,12 +131,12 @@ function buildImageReply({ toUser, fromUser, mediaId }) {
 </xml>`.trim();
 }
 
-async function callDeepSeekWithTimeout(messages, timeoutMs = 4500) {
+async function callDeepSeekWithTimeout(messages, timeoutMs = 8000) {
   return Promise.race([
     openai.chat.completions.create({
       model: "deepseek-v4-flash",
       messages,
-      max_tokens: 900,
+      max_tokens: 500,
       temperature: 0.85
     }),
     new Promise((_, reject) =>
@@ -298,7 +296,7 @@ app.post("/wechat", async (req, res) => {
 
   try {
     const callStart = Date.now();
-    const completion = await callDeepSeekWithTimeout(messages, 4500);
+    const completion = await callDeepSeekWithTimeout(messages, 8000);
     const callDuration = Date.now() - callStart;
     console.log("[DeepSeek成功]", "用户:", toUser.slice(0, 10), "耗时:", callDuration, "ms");
 
@@ -328,7 +326,7 @@ app.post("/wechat", async (req, res) => {
 
     console.error("[DeepSeek失败]",
       "用户:", toUser.slice(0, 10),
-      "原因:", isTimeout ? "超时(>4.5秒)" : e.message,
+      "原因:", isTimeout ? "超时(>8秒)" : e.message,
       "code:", e.code || e.type || "无",
       "总耗时:", totalDuration, "ms"
     );
