@@ -63,7 +63,7 @@ const REPLY_OFFICIAL_SITE = `不要在微信里直接点进去！
 
 【抱歉： 如使用国产品牌笔记本、手机或国产浏览器例如360、华为、oppo等设备，则有可能无法打开网站 ！手机端仅可用支付宝付款 ！】
 
-https://www点sbk26t点com/`;
+www点sbk26t点com/`;
 
 const REPLY_LEARN_HYPNOSIS = `【SBK催眠术的介绍】我是催眠师北堂冬海，学习SBK催眠术你需要了解以下几点：
 
