@@ -68,7 +68,7 @@ function bookingEntryText() {
 const REPLY_OFFICIAL_SITE = `铂歌梵官网：${OFFICIAL_SITE_URL}\n\n目前先分享免费的正念知识、静心练习和相关内容，网站正在逐步完善。若暂时打不开，请稍后再试。活动报名请点下方「预约申请」。`;
 
 function getBookingReply() {
-  return `【正念疗愈免费预订】\n每周日下午13:00，请提前15分钟到达，欢迎对正念、静心、身心放松感兴趣的朋友交流学习。活动全程保持清醒，包含正念练习和轻度伸展，不提供医疗诊疗。\n\n线下每场最多30人，现场每人免费提供一瓶饮用水。请穿舒适、有弹性、不妨碍伸展的衣物，不要求紧身服装。\n\n先提交申请，由主办方审核；通过后取得对应场次的个人凭证，线下到场核销。线上场次按公告安排。地点、时长、年龄要求和瑜伽垫安排以正式说明为准。\n\n${bookingEntryText()}`;
+  return `【正念疗愈免费预订】\n每周日下午13:30，请提前15分钟到达，欢迎对正念、静心、身心放松感兴趣的朋友交流学习。活动全程保持清醒，包含正念练习和轻度伸展，不提供医疗诊疗。\n\n线下每场最多30人，现场每人免费提供一瓶饮用水。请穿舒适、有弹性、不妨碍伸展的衣物，不要求紧身服装。\n\n先提交申请，由主办方审核；通过后取得对应场次的个人凭证，线下到场核销。线上场次按公告安排。地点、时长、年龄要求和瑜伽垫安排以正式说明为准。\n\n${bookingEntryText()}`;
 }
 
 const REPLY_SUBSCRIBE_WELCOME = `欢迎来到铂歌梵的静心花园，来坐坐，喝杯茶。\n\n我是北堂冬海本人，我来为你介绍正念、练习资源和活动安排。\n\n点击「官方网站」浏览免费内容；点击「预约申请」查看《正念疗愈免费预订》的活动说明和入口。每周日下午13:30，请提前15分钟到达，线下每场最多30人，提交申请、审核通过后参加。\n\n报名以正式开放的入口为准，聊天不代为预约。你也可以直接发文字问我：“正念怎么入门？”`;
@@ -397,13 +397,9 @@ app.get("/admin/list-images", async (req, res) => {
   }
 });
 
-// ============== 管理员接口：创建菜单 ==============
-app.get("/admin/create-menu", async (req, res) => {
-  if (req.query.secret !== ADMIN_SECRET) {
-    return res.status(401).json({ error: "wrong secret" });
-  }
-
-  const menu = {
+// 自动发布与原有管理员接口共用同一份菜单定义。
+function buildWechatMenu() {
+  return {
     button: [
       { type: "view", name: "官方网站", url: OFFICIAL_SITE_URL },
       BOOKING_ARTICLE_URL
@@ -411,6 +407,49 @@ app.get("/admin/create-menu", async (req, res) => {
         : { type: "click", name: "预约申请", key: MENU_KEY_BOOKING }
     ]
   };
+}
+
+// 启动后自动发布。先让HTTP服务就绪，再异步调用微信，不阻塞消息回复。
+// 每个进程启动时执行一次；调用失败最多尝试3次，不循环刷接口。
+async function publishMenuOnStartup() {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      console.log("[菜单自动发布]", `第${attempt}/${maxAttempts}次`);
+      const response = await fetch("http://api.weixin.qq.com/cgi-bin/menu/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildWechatMenu()),
+        signal: controller.signal
+      });
+      const data = await response.json();
+      if (!response.ok || data.errcode !== 0) {
+        throw new Error(`HTTP=${response.status}, errcode=${data.errcode ?? "无"}, errmsg=${data.errmsg || "微信未返回成功状态"}`);
+      }
+      console.log("[菜单发布成功] 官方网站、预约申请");
+      return true;
+    } catch (error) {
+      console.error("[菜单发布失败]", `第${attempt}/${maxAttempts}次`, error.message);
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (attempt < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+  console.error("[菜单自动发布] 已停止重试，自动回复继续运行。请核对 /cgi-bin/menu/create 的云调用权限及上方微信错误码。");
+  return false;
+}
+
+// ============== 管理员接口：创建菜单（保留原有手动入口） ==============
+app.get("/admin/create-menu", async (req, res) => {
+  if (req.query.secret !== ADMIN_SECRET) {
+    return res.status(401).json({ error: "wrong secret" });
+  }
+
+  const menu = buildWechatMenu();
 
   try {
     const data = await callWechatApi("/cgi-bin/menu/create", menu);
@@ -440,4 +479,9 @@ app.get("/admin/delete-menu", async (req, res) => {
 });
 
 const port = process.env.PORT || 80;
-app.listen(port, () => console.log("listening on", port, "启动时间:", new Date().toISOString()));
+app.listen(port, () => {
+  console.log("listening on", port, "启动时间:", new Date().toISOString());
+  void publishMenuOnStartup().catch(error => {
+    console.error("[菜单发布失败]", error.message, "自动回复继续运行。");
+  });
+});
